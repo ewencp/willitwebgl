@@ -1,0 +1,38 @@
+WillItWebGL
+-----------
+
+WillItWebGL is a simple utility for testing whether your current
+configuration should run WebGL. It works on Windows, Mac, and Linux.
+It tries to test whether your current configuration *should* support
+WebGL, not whether the major browsers will actually work.  It is meant
+to help determine whether a user should even bother trying to enable
+WebGL. For instance, Intel GMA 950 cards only implement a GL 1.x
+version, so they won't run WebGL in any browser.
+
+
+Technical Details
+-----------------
+
+WebGL is based on OpenGL ES 2.0, which is in turn based on (though
+differs substantially from) OpenGL 2.0. The most basic test is whether
+a recent enough OpenGL is supported: is OpenGL even available, and if
+it is, is the version the driver is reporting recent enough?
+
+Other tests that might be added in the future:
+ * Heuristics to determine likely performance: renderer string may
+   indicate software vs. hardware rendering.
+ * Implementation specific tests - implementations may have slightly
+   different requirements of the underlying OpenGL implementation. Using
+   this information we might be able to suggest which implementations
+   will work.
+ * Support for ANGLE - testing for a recent DirectX version may also
+   be sufficient to run WebGL.
+
+
+Implementation Details
+----------------------
+
+WillItWebGL is essentially an OpenGL application that does nothing but
+try to allocate an OpenGL context and check versions/extensions.  The
+code is based on visualinfo from GLEW (http://glew.sourceforge.net/),
+and licensed under the Modified BSD License.
