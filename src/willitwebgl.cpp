@@ -80,31 +80,45 @@ void DestroyContext (GLContext* ctx);
 
 void ReportInfo(const std::string& msg);
 
+
+// Each check
+enum CheckResult {
+    PASS,
+    WARNING,
+    FAIL
+};
+
+// Each of these methods is a test for WebGL.  If any of them fails, WebGL
+// almost certainly won't work.
+
+CheckResult CheckInit();
+CheckResult CheckDestroy();
+CheckResult CheckVersion();
+CheckResult CheckShaderVersion();
+
+// To run tests, we make one long list and the main method just checks them in
+// order.
+typedef CheckResult(*WebGLCheck)();
+WebGLCheck webgl_checks[] =
+{
+    CheckInit,
+    CheckVersion,
+    CheckShaderVersion,
+    CheckDestroy,
+    NULL
+};
+
 GLContext ctx;
+// Shared buffer for generating messages for convenience.
+char msg_buf[2048];
+
 
 int main(int argc, char** argv) {
     GLenum err;
 
-    /* ---------------------------------------------------------------------- */
-    /* create OpenGL rendering context */
-    InitContext(&ctx);
-    if (GL_TRUE == CreateContext(&ctx))
-    {
-        fprintf(stderr, "Error: CreateContext failed\n");
-        DestroyContext(&ctx);
-        return 1;
+    for(WebGLCheck* check = webgl_checks; *check != NULL; check++) {
+        (*check)();
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* output header information */
-    /* OpenGL extensions */
-    fprintf(stdout, "OpenGL vendor string: %s\n", glGetString(GL_VENDOR));
-    fprintf(stdout, "OpenGL renderer string: %s\n", glGetString(GL_RENDERER));
-    fprintf(stdout, "OpenGL version string: %s\n", glGetString(GL_VERSION));
-
-    /* ---------------------------------------------------------------------- */
-    /* release resources */
-    DestroyContext(&ctx);
 
     return 0;
 }
@@ -270,3 +284,90 @@ void DestroyContext (GLContext* ctx)
 }
 
 #endif /* __UNIX || (__APPLE__ && GLEW_APPLE_GLX) */
+
+
+CheckResult CheckInit() {
+    InitContext(&ctx);
+    if (GL_TRUE == CreateContext(&ctx))
+    {
+        ReportInfo("Error: CreateContext failed.");
+        DestroyContext(&ctx);
+        return FAIL;
+    }
+
+    return PASS;
+}
+
+CheckResult CheckDestroy() {
+    DestroyContext(&ctx);
+    return PASS;
+}
+
+// Helper method for checking versions.  Tries to parse the beginning of a
+// string as a version number, returning a .
+bool ParseVersion(const char* str, int* major, int* minor) {
+    int _major, _minor;
+    int matched = sscanf(str, "%d.%d", &_major, &_minor);
+
+    if (matched < 2)
+        return false;
+
+    if (major) *major = _major;
+    if (minor) *minor = _minor;
+
+    return true;
+}
+
+CheckResult CheckVersion() {
+    int required_major = 2, required_minor = 0;
+
+    int major, minor;
+    const char* vers = (const char*)glGetString(GL_VERSION);
+    if (vers == NULL) {
+        ReportInfo("Error: Couldn't get GL_VERSION.");
+        return FAIL;
+    }
+
+    bool parsed = ParseVersion(vers, &major, &minor);
+    if (!parsed) {
+        sprintf(msg_buf, "Unable to parse GL version: %s", vers);
+        ReportInfo(msg_buf);
+        return FAIL;
+    }
+
+    if (major < required_major ||
+        (major == required_major && minor < required_minor)) {
+        sprintf(msg_buf, "Require GL version %d.%d, have version %d.%d", required_major, required_minor, major, minor);
+        ReportInfo(msg_buf);
+        return FAIL;
+    }
+
+    return PASS;
+}
+
+CheckResult CheckShaderVersion() {
+    int required_major = 1, required_minor = 20;
+
+    int major, minor;
+    const char* vers = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    if (vers == NULL) {
+        ReportInfo("Error: Couldn't get GL_SHADING_LANGUAGE_VERSION.");
+        return FAIL;
+    }
+
+    bool parsed = ParseVersion(vers, &major, &minor);
+    if (!parsed) {
+        sprintf(msg_buf, "Unable to parse GL shading language version: %s", vers);
+        ReportInfo(msg_buf);
+        return FAIL;
+    }
+
+    if (major < required_major ||
+        (major == required_major && minor < required_minor)) {
+        sprintf(msg_buf, "Require GL shading language version %d.%d, have version %d.%d", required_major, required_minor, major, minor);
+        ReportInfo(msg_buf);
+        return FAIL;
+    }
+
+    return PASS;
+}
