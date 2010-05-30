@@ -116,8 +116,14 @@ int main(int argc, char** argv) {
     GLenum err;
 
     for(WebGLCheck* check = webgl_checks; *check != NULL; check++) {
-        (*check)();
+        CheckResult result = (*check)();
+        if (result == FAIL) {
+            DestroyContext(&ctx);
+            return -1;
+        }
     }
+
+    ReportInfo("Passed all checks, you should be able to run WebGL!");
 
     return 0;
 }
