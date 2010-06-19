@@ -79,8 +79,15 @@ void InitContext (GLContext* ctx);
 GLboolean CreateContext (GLContext* ctx);
 void DestroyContext (GLContext* ctx);
 
-void ReportInfo(const std::string& msg);
+enum ButtonSet {
+ NONE_BUTTON = 0,
+ OK_BUTTON =  1 << 1,
+ YES_BUTTON = 1 << 2,
+ NO_BUTTON =  1 << 3,
+};
 
+ButtonSet ReportInfo(const std::string& title, const std::string& msg, ButtonSet buttons = OK_BUTTON);
+void LoadURL(const std::string& url);
 
 // Each check
 enum CheckResult {
@@ -125,17 +132,56 @@ int main(int argc, char** argv) {
         }
     }
 
-    ReportInfo("Passed all checks, you should be able to run WebGL!");
+    ReportInfo("WebGL should work!", "Passed all checks, you should be able to run WebGL!");
 
     return 0;
 }
 
 // Report information to the user.
-void ReportInfo(const std::string& msg) {
+#if defined(_WIN32)
+
+ButtonSet ReportInfo(const std::string& title, const std::string& msg, ButtonSet buttons) {
+    unsigned int msgbox_buttons = 0;
+    if ((buttons & YES_BUTTON) || (buttons & NO_BUTTON))
+        msgbox_buttons = msgbox_buttons | MB_YESNO;
+    if ((buttons & OK_BUTTON))
+        msgbox_buttons = msgbox_buttons | MB_OK;
+
+    int result = MessageBox(NULL, msg.c_str(), title.c_str(), msgbox_buttons);
+
+    if (result == IDOK)
+        return OK_BUTTON;
+    else if (result == IDYES)
+        return YES_BUTTON;
+    else if (result == IDNO)
+        return NO_BUTTON;
+    return NONE_BUTTON;
+}
+void LoadURL(const std::string& url) {
+    ShellExecute(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+}
+
+#elif defined(__APPLE__)
+ButtonSet ReportInfo(const std::string& title, const std::string& msg, ButtonSet buttons) {
     // FIXME This should use GUI output if possible since the user likely isn't
     // running from the command line.
     fprintf(stdout, "%s\n", msg.c_str());
+    return NONE_BUTTON;
 }
+void LoadURL(const std::string& url) {
+    ReportInfo("URL", url);
+}
+#else // Linux
+ButtonSet ReportInfo(const std::string& title, const std::string& msg, ButtonSet buttons) {
+    // FIXME This should use GUI output if possible since the user likely isn't
+    // running from the command line.
+    fprintf(stdout, "%s\n", msg.c_str());
+    return NONE_BUTTON;
+}
+void LoadURL(const std::string& url) {
+    ReportInfo("URL", url);
+}
+#endif
 
 
 #if defined(_WIN32)
@@ -299,7 +345,7 @@ CheckResult CheckInit() {
     InitContext(&ctx);
     if (GL_TRUE == CreateContext(&ctx))
     {
-        ReportInfo("Error: CreateContext failed.");
+        ReportInfo("Error", "Error: CreateContext failed.");
         DestroyContext(&ctx);
         return FAIL;
     }
@@ -333,21 +379,21 @@ CheckResult CheckVersion() {
     int major, minor;
     const char* vers = (const char*)glGetString(GL_VERSION);
     if (vers == NULL) {
-        ReportInfo("Error: Couldn't get GL_VERSION.");
+        ReportInfo("Error", "Error: Couldn't get GL_VERSION.");
         return FAIL;
     }
 
     bool parsed = ParseVersion(vers, &major, &minor);
     if (!parsed) {
         sprintf(msg_buf, "Unable to parse GL version: %s", vers);
-        ReportInfo(msg_buf);
+        ReportInfo("Error", msg_buf);
         return FAIL;
     }
 
     if (major < required_major ||
         (major == required_major && minor < required_minor)) {
         sprintf(msg_buf, "Require GL version %d.%d, have version %d.%d", required_major, required_minor, major, minor);
-        ReportInfo(msg_buf);
+        ReportInfo("Error", msg_buf);
         return FAIL;
     }
 
@@ -360,21 +406,21 @@ CheckResult CheckShaderVersion() {
     int major, minor;
     const char* vers = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
     if (vers == NULL) {
-        ReportInfo("Error: Couldn't get GL_SHADING_LANGUAGE_VERSION.");
+        ReportInfo("Error", "Error: Couldn't get GL_SHADING_LANGUAGE_VERSION.");
         return FAIL;
     }
 
     bool parsed = ParseVersion(vers, &major, &minor);
     if (!parsed) {
         sprintf(msg_buf, "Unable to parse GL shading language version: %s", vers);
-        ReportInfo(msg_buf);
+        ReportInfo("Error", msg_buf);
         return FAIL;
     }
 
     if (major < required_major ||
         (major == required_major && minor < required_minor)) {
         sprintf(msg_buf, "Require GL shading language version %d.%d, have version %d.%d", required_major, required_minor, major, minor);
-        ReportInfo(msg_buf);
+        ReportInfo("Error", msg_buf);
         return FAIL;
     }
 
