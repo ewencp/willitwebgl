@@ -34,7 +34,12 @@ IF(NOT CMAKE_BUILD_TYPE)
       )
 ENDIF()
 
-SET(WIW_DEFAULT_COMPILE_FLAGS "-Wall -Wno-unused-function -Wno-unused-variable -fvisibility=hidden")
+IF(WIN32)
+  SET(WIW_DEFAULT_COMPILE_FLAGS "-D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS -EHsc")
+ELSE()
+  SET(WIW_DEFAULT_COMPILE_FLAGS "-Wall -Wno-unused-function -Wno-unused-variable -fvisibility=hidden")
+ENDIF()
+
 SET(CMAKE_CXX_FLAGS ${WIW_DEFAULT_COMPILE_FLAGS})
 
 PROJECT(wiw C CXX)

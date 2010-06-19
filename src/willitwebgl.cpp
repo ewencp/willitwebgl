@@ -35,7 +35,9 @@
 #include <stdlib.h>
 #include <string.h>
 #if defined(_WIN32)
-//#include <GL/wglew.h>
+#include <windows.h>
+#include <gl/gl.h>
+#include "glext.h"
 #elif defined(__APPLE__)
 #include <AGL/agl.h>
 #else // Linux
@@ -144,6 +146,8 @@ void InitContext (GLContext* ctx)
   ctx->dc = NULL;
   ctx->rc = NULL;
 }
+
+static int visual = -1;
 
 GLboolean CreateContext (GLContext* ctx)
 {
